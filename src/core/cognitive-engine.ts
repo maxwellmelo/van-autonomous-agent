@@ -33,6 +33,7 @@ import { ReflectionEngine } from './reflection-engine.js';
 import { EvolutionEngine } from './evolution-engine.js';
 import { RevenueEngine } from './revenue-engine.js';
 import { WorldModel } from './world-model.js';
+import { HumanChannel } from './human-channel.js';
 
 // ============================================================
 // COGNITIVE ENGINE CLASS
@@ -62,6 +63,7 @@ export class CognitiveEngine {
   private readonly evolutionEngine: EvolutionEngine;
   private readonly revenueEngine: RevenueEngine;
   private readonly worldModel: WorldModel;
+  private readonly humanChannel: HumanChannel;
 
   private isRunning: boolean = false;
   private cycleIntervalMs: number;
@@ -76,6 +78,7 @@ export class CognitiveEngine {
     evolutionEngine: EvolutionEngine;
     revenueEngine: RevenueEngine;
     worldModel: WorldModel;
+    humanChannel: HumanChannel;
     cycleIntervalMs?: number;
   }) {
     this.memory = config.memory;
@@ -86,6 +89,7 @@ export class CognitiveEngine {
     this.evolutionEngine = config.evolutionEngine;
     this.revenueEngine = config.revenueEngine;
     this.worldModel = config.worldModel;
+    this.humanChannel = config.humanChannel;
     this.cycleIntervalMs = config.cycleIntervalMs ?? 5000; // 5 seconds between cycles by default
 
     this.state = {
@@ -117,6 +121,7 @@ export class CognitiveEngine {
     await this.evolutionEngine.initialize();
     await this.revenueEngine.initialize();
     await this.worldModel.initialize();
+    await this.humanChannel.initialize();
 
     // Load previous session state
     const handoff = await this.memory.readLatestSessionHandoff();
@@ -160,6 +165,21 @@ export class CognitiveEngine {
 
     while (this.isRunning && (maxCycles === undefined || cyclesRun < maxCycles)) {
       try {
+        // Respect pause signal from user — poll for "resume" while waiting
+        while (this.humanChannel.isPaused && this.isRunning) {
+          console.log('[Van] Paused by user command — waiting for resume...');
+          await this.sleep(5000);
+          // Still check for messages even while paused so "resume" is received
+          await this.humanChannel.checkForMessages();
+        }
+
+        // User may have issued stop while we were paused
+        if (this.humanChannel.stopRequested) {
+          console.log('[Van] Stop requested by user — ending loop.');
+          this.isRunning = false;
+          break;
+        }
+
         const cycle = await this.executeCycle();
         this.state.currentCycleNumber = cycle.cycleNumber ?? this.state.currentCycleNumber;
         cyclesRun++;
@@ -167,6 +187,11 @@ export class CognitiveEngine {
         // Deep review every N cycles
         if (cyclesRun % this.maxCyclesBeforeDeepReview === 0) {
           await this.performDeepReview();
+        }
+
+        // Periodic status update every 10 cycles
+        if (cyclesRun % 10 === 0) {
+          await this.humanChannel.sendFullStatusUpdate(this.state, this.state.currentCycleNumber);
         }
 
         // Wait before next cycle
@@ -186,6 +211,12 @@ export class CognitiveEngine {
           importance: 4,
           relatedMemoryIds: [],
         });
+
+        // Notify the user when a cycle fails — they may want to intervene
+        await this.humanChannel.notifyUser(
+          `I encountered an error and need to pause briefly: ${errorMessage.slice(0, 200)}`,
+          'urgent'
+        );
 
         // Brief recovery pause
         await this.sleep(10000);
@@ -226,6 +257,14 @@ export class CognitiveEngine {
     };
 
     try {
+      // PRE-CYCLE: Check for incoming user messages BEFORE entering OBSERVE.
+      // This ensures commands like "stop", "pause", and pending-request replies
+      // are processed before any cognitive work begins, preventing wasted cycles.
+      await this.processInboundMessages(cycleNumber);
+
+      // Expire any stale pending requests so they do not linger indefinitely
+      await this.humanChannel.expireStaleRequests();
+
       // PHASE 1: OBSERVE
       cycle.phase = 'observe';
       cycle.observation = await this.observe(cycleNumber);
@@ -499,10 +538,75 @@ export class CognitiveEngine {
       if (goal.progress.percentage >= 100) {
         await this.goalSystem.completeGoal(goal.id, 'Micro-task completed');
         actions.push(`Completed micro-task: ${goal.title}`);
+
+        // Notify user of the completion
+        const nextGoal = this.goalSystem.getHighestPriorityGoal();
+        const nextNote = nextGoal
+          ? ` Starting next objective: ${nextGoal.title}.`
+          : ' No further objectives queued.';
+
+        await this.humanChannel.notifyUser(
+          `Goal completed: "${goal.title}".${nextNote}`,
+          'normal'
+        );
       }
     }
 
     return actions;
+  }
+
+  // ----------------------------------------------------------
+  // INBOUND MESSAGE PROCESSING
+  // ----------------------------------------------------------
+
+  /**
+   * Polls the human channel for new messages and dispatches recognized commands.
+   *
+   * This runs at the very start of each cycle, before any cognitive work, so
+   * that user commands are always acted on promptly and never delayed by the
+   * cost of a full cycle.
+   *
+   * Commands handled here:
+   * - "status"  — sends a full status update back to the user immediately
+   * - "goals"   — sends the full goal list immediately
+   * - "stop"    — sets stopRequested flag (run() loop handles the actual stop)
+   * - "pause"   — sets isPaused flag (run() loop handles the wait)
+   * - "resume"  — clears isPaused flag
+   *
+   * @param cycleNumber - Current cycle number, used in status messages
+   */
+  private async processInboundMessages(cycleNumber: number): Promise<void> {
+    const commands = await this.humanChannel.checkForMessages();
+
+    for (const command of commands) {
+      switch (command) {
+        case 'status': {
+          // Refresh state snapshot before sending
+          this.state.activeGoals = this.goalSystem.getAllActiveGoals();
+          this.state.personalityState = this.personality.getState();
+          this.state.workingMemory = this.memory.getWorkingMemory();
+          await this.humanChannel.sendFullStatusUpdate(this.state, cycleNumber);
+          break;
+        }
+
+        case 'goals': {
+          const goals = this.goalSystem.getAllActiveGoals();
+          await this.humanChannel.sendGoalsSummary(goals);
+          break;
+        }
+
+        case 'stop':
+        case 'pause':
+        case 'resume':
+          // These are handled by the run() loop via isPaused / stopRequested
+          // flags on HumanChannel. No additional action needed here.
+          break;
+
+        default:
+          // Unknown command — HumanChannel already sent a reply to the user
+          break;
+      }
+    }
   }
 
   // ----------------------------------------------------------
@@ -642,11 +746,21 @@ export class CognitiveEngine {
       const newProgress = Math.min(progress + 5, 100);
 
       if (newProgress >= 100) {
-        // Goal complete — mark it done
+        // Goal complete — mark it done and notify user
         await this.goalSystem.completeGoal(goal.id,
           `Completed via autonomous cognitive loop at cycle ${this.state.currentCycleNumber}`
         );
         console.log(`[Plan] Goal completed: ${goal.title}`);
+
+        const nextGoal = this.goalSystem.getHighestPriorityGoal();
+        const nextNote = nextGoal
+          ? ` Starting next objective: ${nextGoal.title}.`
+          : ' No further objectives queued.';
+
+        await this.humanChannel.notifyUser(
+          `Goal completed: "${goal.title}".${nextNote}`,
+          'normal'
+        );
       } else {
         await this.goalSystem.updateProgress(goal.id, {
           percentage: newProgress,

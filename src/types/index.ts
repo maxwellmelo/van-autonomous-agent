@@ -574,6 +574,93 @@ export interface ReflectionRecord {
 }
 
 // ============================================================
+// HUMAN COMMUNICATION CHANNEL TYPES
+// ============================================================
+
+/**
+ * Priority levels that determine how urgently Van pushes a notification
+ * through the user's messaging channel.
+ *
+ * - low:    Non-blocking updates (e.g. periodic status pings)
+ * - normal: Standard events that warrant attention (e.g. goal completion)
+ * - urgent: Requires immediate user action (e.g. blocked on credentials)
+ */
+export type NotificationPriority = 'low' | 'normal' | 'urgent';
+
+/**
+ * A message received from the user through the OpenClaw messaging channel.
+ * Inbound messages are polled from the daemon and processed at the start
+ * of each cognitive cycle before the OBSERVE phase begins.
+ */
+export interface UserMessage {
+  /** Unique identifier assigned by the messaging platform */
+  id: string;
+
+  /** Raw text content sent by the user */
+  content: string;
+
+  /** ISO 8601 timestamp of when the message was sent */
+  receivedAt: Date;
+
+  /** Originating platform identifier (e.g. "telegram", "slack") */
+  platform: string;
+
+  /**
+   * ID of the pending request this message is a response to, if any.
+   * Populated during processing when content matches a known request.
+   */
+  replyToRequestId?: string;
+}
+
+/**
+ * A request Van has sent to the user that is waiting for a reply.
+ *
+ * Pending requests survive process restarts because HumanChannel persists
+ * them in the MemorySystem. When a matching user reply arrives, the request
+ * is resolved and the awaiting logic is unblocked.
+ */
+export interface PendingRequest {
+  /** Unique identifier for this request */
+  id: string;
+
+  /**
+   * The category of request, which determines how Van interprets the reply:
+   * - input:    Free-form text response expected
+   * - approval: Yes/no answer expected
+   */
+  type: 'input' | 'approval';
+
+  /** The question or prompt text sent to the user */
+  question: string;
+
+  /**
+   * Additional context sent alongside the question to help the user
+   * understand why the information is needed.
+   */
+  context: string;
+
+  /** ID of the goal this request is blocking, if any */
+  blockedGoalId?: string;
+
+  /** When the request was first sent to the user */
+  createdAt: Date;
+
+  /**
+   * Current status of the request.
+   * - pending:   Awaiting user reply
+   * - resolved:  User replied and the response was processed
+   * - expired:   No reply received within the timeout window
+   */
+  status: 'pending' | 'resolved' | 'expired';
+
+  /** The user's reply once the request is resolved */
+  resolvedValue?: string;
+
+  /** When the user's reply was received */
+  resolvedAt?: Date;
+}
+
+// ============================================================
 // SYSTEM / OPENCLAW INTEGRATION TYPES
 // ============================================================
 

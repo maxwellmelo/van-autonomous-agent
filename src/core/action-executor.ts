@@ -620,6 +620,82 @@ export class OpenClawAdapter {
   }
 
   /**
+   * Sends a message to the user through OpenClaw's configured messaging channel.
+   *
+   * OpenClaw routes the message to whichever platform is active (Telegram, Slack,
+   * etc.) based on its own channel configuration. Van does not need to know the
+   * specific platform — it only specifies a logical channel name and the content.
+   *
+   * @param channel  - Logical channel identifier (e.g. "user", "alerts")
+   * @param content  - Plain-text message body to deliver
+   * @returns        True when the daemon accepted the message, false otherwise
+   */
+  async sendMessage(channel: string, content: string): Promise<boolean> {
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.daemonUrl}/api/messaging/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Agent-Id': this.agentId,
+        },
+        body: JSON.stringify({ channel, content }),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      void startTime;
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Polls the OpenClaw daemon for new inbound messages from the user.
+   *
+   * The daemon buffers messages that arrive while Van is running. Passing
+   * `since` restricts the results to messages newer than that timestamp,
+   * which lets Van efficiently retrieve only unprocessed messages without
+   * maintaining cursor state in the daemon.
+   *
+   * @param since - Optional lower-bound timestamp (exclusive).
+   *                When omitted the daemon returns all buffered messages.
+   * @returns Array of raw message objects; empty array on any error.
+   */
+  async pollMessages(since?: Date): Promise<Array<{
+    id: string;
+    content: string;
+    receivedAt: string;
+    platform: string;
+  }>> {
+    try {
+      const params = since
+        ? `?since=${encodeURIComponent(since.toISOString())}`
+        : '';
+
+      const response = await fetch(
+        `${this.daemonUrl}/api/messaging/inbox${params}`,
+        {
+          method: 'GET',
+          headers: { 'X-Agent-Id': this.agentId },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+
+      if (!response.ok) return [];
+
+      const data = await response.json() as {
+        messages?: Array<{ id: string; content: string; receivedAt: string; platform: string }>;
+      };
+
+      return data.messages ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Checks if the OpenClaw daemon is reachable and healthy.
    */
   async healthCheck(): Promise<boolean> {

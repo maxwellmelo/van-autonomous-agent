@@ -21,6 +21,7 @@ import { EvolutionEngine } from './core/evolution-engine.js';
 import { RevenueEngine } from './core/revenue-engine.js';
 import { WorldModel } from './core/world-model.js';
 import { CognitiveEngine } from './core/cognitive-engine.js';
+import { HumanChannel } from './core/human-channel.js';
 
 // ============================================================
 // CONFIGURATION
@@ -54,8 +55,9 @@ const CONFIG = {
  * 2. GoalSystem, PersonalityEngine, WorldModel (depend on MemorySystem)
  * 3. EvolutionEngine, RevenueEngine (depend on MemorySystem + GoalSystem)
  * 4. ReflectionEngine (depends on MemorySystem + PersonalityEngine)
- * 5. ActionExecutor (depends on MemorySystem + OpenClawAdapter)
- * 6. CognitiveEngine (depends on all of the above)
+ * 5. OpenClawAdapter, ActionExecutor (depend on MemorySystem)
+ * 6. HumanChannel (depends on MemorySystem + OpenClawAdapter)
+ * 7. CognitiveEngine (depends on all of the above)
  */
 function createAgentSystem() {
   // Layer 1: Foundation (memory root configured in openclaw.config.yaml → memory.root_path)
@@ -75,7 +77,12 @@ function createAgentSystem() {
   const openClawAdapter = new OpenClawAdapter(CONFIG.openClawUrl, 'van-agent-001');
   const actionExecutor = new ActionExecutor(memory, openClawAdapter);
 
-  // Layer 5: Cognitive engine (orchestrator)
+  // Layer 5: Human communication channel
+  // HumanChannel depends on both MemorySystem (for persisting pending requests)
+  // and OpenClawAdapter (for sending/polling messages through the daemon).
+  const humanChannel = new HumanChannel(memory, openClawAdapter);
+
+  // Layer 6: Cognitive engine (orchestrator)
   const cognitiveEngine = new CognitiveEngine({
     memory,
     goalSystem,
@@ -85,6 +92,7 @@ function createAgentSystem() {
     evolutionEngine,
     revenueEngine,
     worldModel,
+    humanChannel,
     cycleIntervalMs: CONFIG.cycleIntervalMs,
   });
 
@@ -99,6 +107,7 @@ function createAgentSystem() {
     reflectionEngine,
     actionExecutor,
     openClawAdapter,
+    humanChannel,
   };
 }
 
