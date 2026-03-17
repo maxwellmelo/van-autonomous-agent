@@ -3,12 +3,7 @@
 ## File: `.env.example`
 
 ### Before
-Contained 59 lines with redundant settings that already exist in `openclaw.config.yaml`:
-- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — AI provider keys
-- `VAN_AGENT_ID` — agent identity
-- `MEMORY_ROOT` — memory path
-- `LOG_LEVEL` — logging verbosity
-- `TELEGRAM_BOT_TOKEN` / `SLACK_BOT_TOKEN` — messaging tokens
+Contained 59 lines with redundant settings — API keys, provider config, agent ID, memory path, log level, messaging tokens — all of which are handled by OpenClaw itself.
 
 ### After
 Contains only 3 variables that are Node.js runtime overrides (not configurable via OpenClaw):

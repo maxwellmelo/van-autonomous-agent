@@ -23,18 +23,14 @@ daemon:
   log_file: "logs/openclaw.log"
 
 # AI Model configuration
-# Van is model-agnostic — configure the provider you have access to
-model:
-  provider: "anthropic"            # anthropic | openai | azure | ollama | groq
-  name: "claude-3-5-sonnet-20241022"  # The specific model to use
-  temperature: 0.7                 # Creative but focused
-  max_tokens: 8192                 # Full response length for complex reasoning
-  # Uncomment and configure your API key:
-  # api_key: "${ANTHROPIC_API_KEY}"
-  # For OpenAI:
-  # provider: "openai"
-  # name: "gpt-4-turbo"
-  # api_key: "${OPENAI_API_KEY}"
+# Van inherits the AI provider from your OpenClaw instance.
+# No API keys or model settings are needed here — OpenClaw handles that.
+# The settings below are optional overrides if you want Van to use
+# different model parameters than your OpenClaw defaults.
+#
+# model:
+#   temperature: 0.7               # Creative but focused
+#   max_tokens: 8192               # Full response length for complex reasoning
 
 # Memory configuration
 # Van uses file-based Markdown memory — aligned with OpenClaw's paradigm

@@ -289,31 +289,26 @@ memory/
 
 ## Configuration
 
-Van is configured through:
-1. `openclaw.config.yaml` — OpenClaw daemon configuration
-2. Environment variables — runtime overrides
-3. `memory/identity/core.md` — persistent self-model (updated by Van)
+Van is an OpenClaw plugin. It inherits the AI provider and model from your OpenClaw instance — no API keys or model configuration needed.
 
-Key environment variables:
-- `OPENCLAW_URL` — OpenClaw daemon URL (default: http://localhost:18789)
-- `VAN_AGENT_ID` — Unique agent identifier
-- `CYCLE_INTERVAL_MS` — Milliseconds between cognitive cycles
-- `MEMORY_ROOT` — Root path for memory files
-- `LOG_LEVEL` — Logging verbosity
+Van-specific configuration:
+1. `openclaw.config.yaml` — Tool permissions, security settings, and optional overrides
+2. `.env` (optional) — Runtime overrides for `CYCLE_INTERVAL_MS` and `MAX_CYCLES`
+3. `memory/identity/core.md` — Persistent self-model (updated by Van over time)
 
 ---
 
 ## Setup Instructions
 
-1. Install OpenClaw: Follow OpenClaw installation documentation
-2. Install Van dependencies: `npm install`
-3. Configure OpenClaw: Review and edit `openclaw.config.yaml`
-4. Configure AI provider: Set your API key in environment or config
-5. Start OpenClaw daemon: `openclaw start --config openclaw.config.yaml`
-6. Start Van: `npm start`
-
-For development with auto-reload:
 ```bash
+# Install as OpenClaw plugin (recommended)
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent
+openclaw agent start van
+
+# Or manual installation for development
+git clone https://github.com/maxwellmelo/van-autonomous-agent.git
+cd van-autonomous-agent
+npm install
 npm run dev
 ```
 

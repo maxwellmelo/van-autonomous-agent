@@ -29,9 +29,9 @@ import { CognitiveEngine } from './core/cognitive-engine.js';
 /**
  * Runtime configuration.
  *
- * Most configuration lives in openclaw.config.yaml (AI provider, model,
- * memory paths, tool permissions, messaging, security). This CONFIG only
- * holds values that are Van-specific runtime overrides.
+ * Van is an OpenClaw plugin — the AI provider and model are inherited
+ * from the OpenClaw instance. This CONFIG only holds optional runtime
+ * overrides for the cognitive loop timing.
  */
 const CONFIG = {
   // OpenClaw daemon URL (override only if running on non-default port)

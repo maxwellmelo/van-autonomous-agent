@@ -1,74 +1,37 @@
 # Van Setup Guide
 
-## Prerequisites
-
-1. **Node.js 20+**: Required for the TypeScript runtime
-   - Download: https://nodejs.org/
-   - Verify: `node --version`
-
-2. **OpenClaw**: The execution platform Van runs on
-   - Install: Follow OpenClaw documentation
-   - Verify: `openclaw --version`
-
-3. **AI Provider API Key**: Van needs an LLM to reason
-   - Anthropic Claude (recommended): https://console.anthropic.com/
-   - OpenAI GPT-4: https://platform.openai.com/
-   - Or any provider supported by OpenClaw
-
----
-
 ## Installation
 
-### 1. Clone or prepare the Van directory
+Van is an OpenClaw plugin. It uses the AI provider already configured in your OpenClaw instance — no separate API keys or model configuration needed.
+
+### Option 1: Install as OpenClaw plugin (recommended)
 
 ```bash
-cd "E:/Vibe Coding/Van"
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-### 2. Install Node dependencies
+OpenClaw handles everything: cloning, dependency installation, build, and registration.
+
+### Option 2: Manual installation (for development)
 
 ```bash
+git clone https://github.com/maxwellmelo/van-autonomous-agent.git
+cd van-autonomous-agent
 npm install
-```
-
-### 3. Build TypeScript
-
-```bash
 npm run build
 ```
 
-### 4. Configure AI provider
+---
 
-Edit `openclaw.config.yaml` — find the `model` section:
+## Starting Van
 
-```yaml
-model:
-  provider: "anthropic"
-  name: "claude-3-5-sonnet-20241022"
-```
-
-Set your API key as an environment variable:
+### As an OpenClaw plugin
 
 ```bash
-# Windows (PowerShell)
-$env:ANTHROPIC_API_KEY = "your-key-here"
-
-# Linux/Mac
-export ANTHROPIC_API_KEY="your-key-here"
+openclaw agent start van
 ```
 
-### 5. Start OpenClaw daemon
-
-```bash
-openclaw start --config openclaw.config.yaml
-```
-
-Verify it is running:
-```bash
-openclaw status
-```
-
-### 6. Start Van
+### Manual start (development)
 
 ```bash
 npm start
@@ -122,11 +85,7 @@ Key files to check:
 
 ### Messaging integration (optional)
 
-To receive updates from Van via Telegram:
-
-1. Create a Telegram bot: Talk to @BotFather on Telegram
-2. Get your chat ID: Talk to @userinfobot
-3. Configure in `openclaw.config.yaml`:
+To receive updates from Van via Telegram, configure in your OpenClaw messaging settings:
 
 ```yaml
 messaging:
@@ -142,15 +101,26 @@ messaging:
 
 ## Configuration Reference
 
-### Environment Variables
+### `openclaw.config.yaml`
+
+Optional Van-specific overrides. The AI provider and model are inherited from OpenClaw — you do not configure them here.
+
+Key sections you may want to customize:
+
+| Section | Purpose |
+|---------|---------|
+| `tools.shell.allowed_commands` | Whitelist of shell commands Van can execute |
+| `tools.filesystem.write.allowed_paths` | Directories Van can write to |
+| `security.require_confirmation_for` | Actions that need human approval |
+
+### Environment Variables (`.env`)
+
+Optional runtime overrides. Not required for normal operation.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENCLAW_URL` | `http://localhost:18789` | OpenClaw daemon URL (override only if non-default port) |
 | `CYCLE_INTERVAL_MS` | `5000` | Milliseconds between cognitive cycles |
 | `MAX_CYCLES` | (unlimited) | Stop after N cycles (for testing) |
-
-> All other settings (AI provider, API keys, agent ID, memory path, log level, messaging) are configured in `openclaw.config.yaml`.
 
 ---
 
@@ -158,10 +128,9 @@ messaging:
 
 ### Van starts but actions fail
 
-Check that OpenClaw daemon is running:
+Check that your OpenClaw daemon is running:
 ```bash
 openclaw status
-curl http://localhost:18789/health
 ```
 
 ### Memory directory errors
@@ -174,9 +143,7 @@ chmod -R 755 memory/
 
 ### AI responses are slow or timing out
 
-Adjust the model configuration in `openclaw.config.yaml`:
-- Try a smaller/faster model for development
-- Increase timeout settings if on a slow connection
+Check your OpenClaw provider configuration — Van uses whatever model your OpenClaw instance is connected to. Try a smaller/faster model for development.
 
 ### Goal system shows empty on restart
 
@@ -186,8 +153,8 @@ This is expected on first start — Van creates bootstrap goals automatically. O
 
 ## Security Notes
 
-1. **API keys**: Never commit API keys to version control. Use environment variables.
-2. **Shell access**: The shell tool is restricted by the allowed_commands list in config.
-3. **File access**: Filesystem access is restricted to configured paths.
+1. **No API keys in this project**: Van uses OpenClaw's provider connection. No keys to manage or leak.
+2. **Shell access**: Restricted by the `allowed_commands` list in config.
+3. **File access**: Restricted to configured paths — Van cannot self-modify its own source code.
 4. **Financial actions**: Van cannot execute payments — all financial actions require human authorization.
 5. **Audit log**: All tool calls are logged to `logs/audit.log` for review.

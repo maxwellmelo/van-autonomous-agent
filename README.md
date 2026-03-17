@@ -29,7 +29,7 @@ Van is designed for the OpenClaw community as a reference implementation of what
 - **Revenue Generation Framework** — A multi-category revenue strategy system covering services, digital products, content, and AI-specific opportunities — evaluated through a structured scoring model
 - **Self-Evolution Engine** — Capability gap identification and improvement project management that helps Van get better at its own core activities over time
 - **Hard Ethical Limits at the Code Level** — Key safety constraints enforced in the execution path, not only in prompts
-- **Model-Agnostic** — Works with Anthropic Claude, OpenAI GPT-4, Azure OpenAI, Groq, or any provider supported by OpenClaw
+- **Model-Agnostic** — Runs on whatever AI provider your OpenClaw instance is connected to — no separate API key configuration needed
 - **Comprehensive Prompt System** — Ten specialized system prompts covering every cognitive function, from identity to revenue strategy to risk assessment
 - **Structured Logging and Audit Trail** — All tool calls are recorded in a dedicated audit log; operational and daemon logs are kept separately
 
@@ -132,70 +132,40 @@ Van/
 
 ## Quick Start
 
+Van is an **OpenClaw plugin**. Your OpenClaw instance already has the AI provider configured — Van uses that connection directly. No API keys or model configuration needed.
+
 ### Prerequisites
 
-- **Node.js 20+** — [nodejs.org](https://nodejs.org/)
-- **OpenClaw** — Follow the [OpenClaw installation guide](https://openclaw.dev/docs/install)
-- **AI Provider API Key** — Anthropic Claude (recommended), OpenAI GPT-4, or any OpenClaw-supported provider
+- **OpenClaw** installed and running with an AI provider already connected — [OpenClaw installation guide](https://openclaw.dev/docs/install)
 
-### 1. Install dependencies
+### Install Van
 
 ```bash
-npm install
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-### 2. Configure your AI provider
+That's it. OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill.
 
-Open `openclaw.config.yaml` and set your model provider:
-
-```yaml
-model:
-  provider: "anthropic"               # anthropic | openai | azure | ollama | groq
-  name: "claude-3-5-sonnet-20241022"  # model name for your chosen provider
-```
-
-Set your API key as an environment variable:
+### Start Van
 
 ```bash
-# Linux / macOS
-export ANTHROPIC_API_KEY="your-key-here"
-
-# Windows (PowerShell)
-$env:ANTHROPIC_API_KEY = "your-key-here"
+openclaw agent start van
 ```
 
-### 3. Start the OpenClaw daemon
-
-```bash
-openclaw start --config openclaw.config.yaml
-```
-
-Verify it is running:
-
-```bash
-openclaw status
-# or
-curl http://localhost:18789/health
-```
-
-### 4. Build and start Van
-
-```bash
-npm run build
-npm start
-```
-
-Van will print its startup banner and immediately begin the first cognitive cycle.
+Van will begin its first cognitive cycle immediately, using whatever AI provider your OpenClaw instance is connected to.
 
 ### Development Mode
 
-For live TypeScript reloading during development:
+If you want to develop or modify Van locally:
 
 ```bash
+git clone https://github.com/maxwellmelo/van-autonomous-agent.git
+cd van-autonomous-agent
+npm install
 npm run dev
 ```
 
-For a controlled test run:
+For controlled test runs:
 
 ```bash
 # Single cycle
@@ -409,30 +379,19 @@ graph TD
 
 ## Configuration
 
+Van runs as an OpenClaw plugin and inherits the AI provider, model, and API key configuration from your OpenClaw instance. You do not need to configure any AI provider settings — Van uses whatever provider OpenClaw is already connected to.
+
 ### `openclaw.config.yaml`
 
-The primary configuration file. Key sections:
+Optional overrides for Van-specific behavior. Most users will not need to modify this file — the defaults work out of the box.
 
 ```yaml
+# Agent identity
 agent:
   id: "van-agent-001"
   name: "Van"
 
-daemon:
-  port: 18789
-  host: "127.0.0.1"
-
-model:
-  provider: "anthropic"               # anthropic | openai | azure | ollama | groq
-  name: "claude-3-5-sonnet-20241022"
-  temperature: 0.7
-  max_tokens: 8192
-
-memory:
-  root_path: "./memory"
-  max_file_size_bytes: 10485760        # 10MB
-  auto_archive_days: 90
-
+# Tool permissions — what Van is allowed to do
 tools:
   shell:
     enabled: true
@@ -445,8 +404,8 @@ tools:
   browser:
     enabled: true
     headless: true
-    blocked_domains: [localhost, 127.0.0.1, 169.254.169.254]
 
+# Safety — actions that require human confirmation
 security:
   require_confirmation_for:
     - financial_transactions
@@ -455,15 +414,12 @@ security:
   audit_log: true
 ```
 
-Docker sandboxing is available for production deployments. Messaging integrations (Telegram, Slack, WhatsApp) can be enabled in the `messaging` section.
-
 ### Environment Variables (`.env`)
 
-Van-specific runtime overrides. All AI provider keys and model configuration belong in `openclaw.config.yaml`, not here.
+Optional runtime overrides for development and testing. Not required for normal operation.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENCLAW_URL` | `http://localhost:18789` | Override only if daemon port was changed |
 | `CYCLE_INTERVAL_MS` | `5000` | Milliseconds between cognitive cycles |
 | `MAX_CYCLES` | (unlimited) | Stop after N cycles — useful for testing |
 
