@@ -48,6 +48,34 @@ This installs the full Van implementation: the TypeScript runtime, all nine core
 
 Van starts running on your OpenClaw instance immediately, using whatever AI provider you have connected. No separate API key configuration is needed.
 
+**Recommended: Enable Lossless Memory**
+
+Van's cognitive loop generates a continuous stream of reflections, goals, experiences, and strategy decisions. To prevent context loss across long-running sessions, we strongly recommend installing [lossless-claw](https://github.com/martian-engineering/lossless-claw) — a plugin that replaces OpenClaw's default sliding-window truncation with DAG-based lossless context management:
+
+```bash
+openclaw plugins install @martian-engineering/lossless-claw
+```
+
+With lossless-claw enabled, Van never forgets. Every reflection, every lesson learned, every strategic decision is preserved in a SQLite database with hierarchical summaries. Van can recall details from hundreds of cycles ago using built-in retrieval tools (`lcm_grep`, `lcm_expand`).
+
+### Performance Comparison
+
+| Aspect | Option A (Methodology) | Option B (Full Agent) |
+|--------|----------------------|----------------------|
+| Latency per cycle | Lower — LLM called directly | Higher — TypeScript processing + LLM |
+| Memory usage | Only OpenClaw | Node.js runtime + OpenClaw |
+| Tokens per cycle | You control what loads | All prompts loaded per cycle |
+| I/O overhead | Minimal | Reads/writes Markdown each cycle |
+| Memory retention | Depends on your setup | Lossless with lossless-claw |
+| Flexibility | Total — adapt as you wish | Fixed CognitiveEngine structure |
+| Setup effort | Requires integration work | Ready to run immediately |
+| Self-evolution | Manual — you implement | Automatic — built-in EvolutionEngine |
+| Revenue tracking | Manual — you implement | Automatic — built-in RevenueEngine |
+
+**Choose Option A** if you already have an agent and want to upgrade its cognitive framework. It is lighter and gives you full control.
+
+**Choose Option B** if you want a complete autonomous agent out of the box, with persistent memory, self-evolution, and revenue tracking working from the first cycle.
+
 ---
 
 ## Key Features
@@ -184,13 +212,14 @@ OpenClaw installs the `methodology/` directory into your agent's skill path. Loa
 
 Van is an **OpenClaw plugin**. Your OpenClaw instance already has the AI provider configured — Van uses that connection directly. No API keys or model configuration needed.
 
-**Install:**
+**Install Van + lossless memory:**
 
 ```bash
+openclaw plugins install @martian-engineering/lossless-claw
 openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill.
+OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill. Lossless-claw ensures Van never loses context across long-running sessions.
 
 **Start:**
 
