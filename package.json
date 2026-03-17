@@ -1,0 +1,47 @@
+{
+  "name": "van-autonomous-agent",
+  "version": "1.0.0",
+  "description": "Van — an autonomous AI agent with cognitive loop, self-evolution, and revenue generation capabilities, running on OpenClaw.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "cycle:once": "MAX_CYCLES=1 tsx src/index.ts",
+    "cycle:five": "MAX_CYCLES=5 tsx src/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "node-fetch": "^3.3.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "autonomous-agent",
+    "ai",
+    "cognitive-loop",
+    "openclaw",
+    "self-evolution",
+    "revenue-generation"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (NEVER commit)
+.env
+.env.local
+.env.production
+
+# Logs
+logs/*.log
+logs/*.json
+
+# Memory (Van's persistent state — may contain sensitive information)
+# Uncomment to exclude from git entirely:
+# memory/
+
+# BUT do track the memory structure:
+!memory/.gitkeep
+!memory/identity/.gitkeep
+!memory/goals/.gitkeep
+!memory/experiences/.gitkeep
+!memory/knowledge/.gitkeep
+!memory/revenue/.gitkeep
+!memory/evolution/.gitkeep
+!memory/world-model/.gitkeep
+!memory/system/.gitkeep
+
+# Track initial memory files
+!memory/identity/core.md
+!memory/goals/active.md
+!memory/world-model/markets.md
+!memory/revenue/overview.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# TypeScript incremental build
+*.tsbuildinfo

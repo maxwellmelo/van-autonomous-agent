@@ -1,0 +1,185 @@
+# ============================================================
+# OpenClaw Configuration for Van Autonomous Agent
+# ============================================================
+# This file configures the OpenClaw daemon for Van's specific needs.
+# See OpenClaw documentation for full configuration reference.
+#
+# To start OpenClaw with this config:
+#   openclaw start --config openclaw.config.yaml
+# ============================================================
+
+# Agent identity
+agent:
+  id: "van-agent-001"
+  name: "Van"
+  description: "Autonomous AI agent with cognitive loop, self-evolution, and revenue generation"
+  version: "1.0.0"
+
+# Daemon configuration
+daemon:
+  port: 18789
+  host: "127.0.0.1"
+  log_level: "info"
+  log_file: "logs/openclaw.log"
+
+# AI Model configuration
+# Van is model-agnostic — configure the provider you have access to
+model:
+  provider: "anthropic"            # anthropic | openai | azure | ollama | groq
+  name: "claude-3-5-sonnet-20241022"  # The specific model to use
+  temperature: 0.7                 # Creative but focused
+  max_tokens: 8192                 # Full response length for complex reasoning
+  # Uncomment and configure your API key:
+  # api_key: "${ANTHROPIC_API_KEY}"
+  # For OpenAI:
+  # provider: "openai"
+  # name: "gpt-4-turbo"
+  # api_key: "${OPENAI_API_KEY}"
+
+# Memory configuration
+# Van uses file-based Markdown memory — aligned with OpenClaw's paradigm
+memory:
+  root_path: "./memory"
+  max_file_size_bytes: 10485760    # 10MB per file
+  auto_archive_days: 90            # Archive files older than 90 days
+  encoding: "utf-8"
+
+# Tool permissions
+# Each tool must be explicitly enabled for security
+tools:
+  shell:
+    enabled: true
+    allowed_commands:
+      - "ls"
+      - "cat"
+      - "echo"
+      - "pwd"
+      - "find"
+      - "grep"
+      - "curl"
+      - "npm"
+      - "node"
+      - "git"
+    blocked_commands:
+      - "rm -rf /"
+      - "format"
+      - "dd"
+      - "shutdown"
+      - "reboot"
+    working_directory: "."
+    timeout_seconds: 30
+    max_concurrent: 3
+
+  filesystem:
+    enabled: true
+    read:
+      allowed_paths:
+        - "./memory/**"
+        - "./src/**"
+        - "./docs/**"
+      blocked_paths:
+        - "/etc/**"
+        - "/sys/**"
+        - "~/.ssh/**"
+    write:
+      allowed_paths:
+        - "./memory/**"
+        - "./logs/**"
+      blocked_paths:
+        - "./src/**"   # Van should not self-modify source code without human review
+        - "/etc/**"
+    max_file_size_mb: 10
+
+  browser:
+    enabled: true
+    headless: true
+    timeout_seconds: 30
+    max_concurrent: 2
+    allowed_domains:
+      # Allow all domains for research purposes
+      # Restrict if you want to limit browsing scope
+      - "*"
+    blocked_domains:
+      - "localhost"  # Prevent SSRF to local services
+      - "127.0.0.1"
+      - "169.254.169.254"  # AWS metadata endpoint
+
+  http:
+    enabled: true
+    timeout_seconds: 30
+    max_concurrent: 5
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    blocked_urls:
+      - "file://**"
+      - "ftp://**"
+      - "http://localhost/**"
+      - "http://127.0.0.1/**"
+
+# Messaging platform integrations
+# Uncomment and configure to enable messaging
+messaging:
+  enabled: false
+  # telegram:
+  #   enabled: true
+  #   bot_token: "${TELEGRAM_BOT_TOKEN}"
+  #   allowed_chat_ids:
+  #     - "${YOUR_CHAT_ID}"
+  #
+  # slack:
+  #   enabled: false
+  #   bot_token: "${SLACK_BOT_TOKEN}"
+  #   allowed_channels:
+  #     - "van-agent"
+  #
+  # whatsapp:
+  #   enabled: false
+  #   api_url: "${WHATSAPP_API_URL}"
+  #   api_token: "${WHATSAPP_API_TOKEN}"
+
+# Docker sandboxing
+# Enable for production deployments for stronger isolation
+docker:
+  enabled: false
+  image: "node:20-alpine"
+  memory_limit: "2g"
+  cpu_limit: "2"
+  network: "bridge"
+  volumes:
+    - "./memory:/app/memory"
+    - "./logs:/app/logs"
+
+# AgentSkills configuration
+# Custom skills that extend Van's capabilities
+skills:
+  directory: "./src/skills"
+  enabled:
+    - "research"
+    - "content-writer"
+    - "market-analyzer"
+    - "code-reviewer"
+
+# Security settings
+security:
+  # Require human confirmation for high-risk actions
+  require_confirmation_for:
+    - "financial_transactions"
+    - "external_account_creation"
+    - "sending_messages_to_new_recipients"
+  # Maximum action execution time
+  max_action_duration_seconds: 300
+  # Log all tool calls for audit
+  audit_log: true
+  audit_log_path: "./logs/audit.log"
+
+# Logging configuration
+logging:
+  level: "info"            # debug | info | warn | error
+  console: true
+  file:
+    enabled: true
+    path: "./logs/van.log"
+    max_size_mb: 100
+    max_files: 10
+  structured: true         # JSON logging for production
