@@ -470,12 +470,12 @@ export class CognitiveEngine {
     // Generate actions based on goal type and current state
     const nextAction = goal.progress.nextAction;
 
-    // Research action
+    // Research action — uses OpenClaw browser tool (external action)
     if (nextAction.toLowerCase().includes('research') || goal.progress.percentage === 0) {
       actions.push({
         id: `${planId}-A1`,
         description: `Research: ${goal.title}`,
-        tool: 'browser.navigate',
+        tool: 'browser',
         input: { url: 'about:blank', query: goal.title },
         expectedOutput: 'Research findings relevant to goal',
         successCriteria: 'Research questions answered with credible sources',
@@ -486,22 +486,36 @@ export class CognitiveEngine {
       });
     }
 
-    // Planning action
+    // Planning action — writes to memory directly (internal action, no OpenClaw tool needed)
     if (goal.progress.percentage < 50) {
-      actions.push({
-        id: `${planId}-A2`,
-        description: `Plan execution approach for: ${goal.title}`,
-        tool: 'file.write',
-        input: {
-          path: `memory/system/plans/${planId}.md`,
-          content: `# Execution Plan: ${goal.title}\n\n${goal.progress.nextAction}\n\nDate: ${new Date().toISOString()}`,
-        },
-        expectedOutput: 'Plan document written to memory',
-        successCriteria: 'Plan file created successfully',
-        failureCriteria: 'File write fails',
-        estimatedDurationMinutes: 15,
-        dependencies: actions.length > 0 ? [`${planId}-A1`] : [],
-        status: 'pending',
+      const planContent = [
+        `# Execution Plan: ${goal.title}`,
+        ``,
+        `Date: ${new Date().toISOString()}`,
+        `Goal ID: ${goal.id}`,
+        `Current progress: ${goal.progress.percentage}%`,
+        ``,
+        `## Next Action`,
+        goal.progress.nextAction,
+        ``,
+        `## Success Criteria`,
+        goal.successCriteria.primary,
+      ].join('\n');
+
+      await this.memory.writeExperience({
+        category: 'experience-insight',
+        title: `Execution plan: ${goal.title}`,
+        content: planContent,
+        tags: ['plan', goal.level, ...goal.tags],
+        importance: 3,
+        relatedMemoryIds: [],
+      });
+
+      // Update goal progress to reflect planning work
+      await this.goalSystem.updateProgress(goal.id, {
+        percentage: Math.max(goal.progress.percentage, 5),
+        lastActionTaken: 'Created execution plan',
+        nextAction: actions.length > 0 ? 'Execute research from plan' : 'Begin execution of planned approach',
       });
     }
 
@@ -514,8 +528,8 @@ export class CognitiveEngine {
       contingencies: [
         {
           trigger: 'Research finds no relevant information',
-          response: 'Switch to direct experimentation approach',
-          fallbackActionId: `${planId}-A2`,
+          response: 'Reframe search query and try alternative sources',
+          fallbackActionId: '',
         },
       ],
       completionCriteria: [
@@ -556,11 +570,14 @@ export class CognitiveEngine {
   }
 
   private runExecutionCheck(plan: ActionPlan): boolean {
+    // Plans with no external actions always pass (internal memory operations are pre-executed)
+    if (plan.actions.length === 0) return true;
+
     const availableTools = new Set(this.worldModel.getAvailableTools().map(t => t.name));
 
-    // Check that all tools are available
+    // Check that all required external tools are available
     for (const action of plan.actions) {
-      const toolBase = action.tool.split('.')[0] ?? action.tool; // e.g., 'browser' from 'browser.navigate'
+      const toolBase = action.tool.split('.')[0] ?? action.tool;
       if (!availableTools.has(toolBase) && !availableTools.has(action.tool)) {
         console.warn(`[Check] Tool not available: ${action.tool}`);
         return false;
@@ -571,34 +588,43 @@ export class CognitiveEngine {
   }
 
   private async takeDiagnosticAction(decision: DecisionState): Promise<ExecutionState> {
-    // When checks fail, take a safe diagnostic action
-    const diagnosticPlan: ActionPlan = {
-      id: `DIAG-${Date.now()}`,
-      goalId: decision.selectedGoal.id,
-      taskDescription: 'Diagnostic: assess current state',
-      estimatedTotalTimeMinutes: 5,
-      actions: [
-        {
-          id: `DIAG-A1`,
-          description: 'Write diagnostic log to memory',
-          tool: 'file.write',
-          input: {
-            path: `memory/system/diagnostics/${Date.now()}.md`,
-            content: `# Diagnostic Log\nDate: ${new Date().toISOString()}\nEthics check: ${decision.ethicsCheckPassed}\nExecution check: ${decision.executionCheckPassed}\n\nGoal: ${decision.selectedGoal.title}\n`,
-          },
-          expectedOutput: 'Diagnostic file written',
-          successCriteria: 'File created',
-          failureCriteria: 'File creation fails',
-          estimatedDurationMinutes: 1,
-          dependencies: [],
-          status: 'pending',
-        },
-      ],
-      contingencies: [],
-      completionCriteria: ['Diagnostic logged'],
-    };
+    // When checks fail, write diagnostics directly to memory (no OpenClaw needed)
+    const diagnosticContent = [
+      `# Diagnostic Log`,
+      `Date: ${new Date().toISOString()}`,
+      `Ethics check: ${decision.ethicsCheckPassed}`,
+      `Execution check: ${decision.executionCheckPassed}`,
+      `Strategic score: ${decision.strategicCheckScore}/10`,
+      ``,
+      `Goal: ${decision.selectedGoal.title}`,
+      `Goal status: ${decision.selectedGoal.status}`,
+      `Goal progress: ${decision.selectedGoal.progress.percentage}%`,
+    ].join('\n');
 
-    return this.executor.executePlan(diagnosticPlan);
+    await this.memory.writeExperience({
+      category: 'experience-insight',
+      title: `Diagnostic: checks failed for ${decision.selectedGoal.title}`,
+      content: diagnosticContent,
+      tags: ['diagnostic', 'checks-failed'],
+      importance: 2,
+      relatedMemoryIds: [],
+    });
+
+    return {
+      planId: `DIAG-${Date.now()}`,
+      actionsExecuted: 1,
+      actionsSucceeded: 1,
+      actionsFailed: 0,
+      results: [{
+        success: true,
+        output: 'Diagnostic written to memory',
+        matchedExpectation: true,
+        sideEffects: [],
+        durationMs: 0,
+      }],
+      totalDurationMs: 0,
+      unexpectedOutcomes: [],
+    };
   }
 
   // ----------------------------------------------------------
