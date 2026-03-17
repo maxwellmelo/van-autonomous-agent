@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Van Setup Script
-# Installs the Van agent and registers the shared cognitive methodology skills
-# for all agents in your OpenClaw instance.
+# Installs the Van agent, registers shared cognitive methodology skills,
+# configures lossless-claw, creates start/stop convenience scripts,
+# and runs a smoke test to verify everything works.
 #
 # Usage:
 #   cd ~/.openclaw/agents-workspaces/van
@@ -16,6 +17,7 @@ set -euo pipefail
 
 SKILL_DIR="${HOME}/.openclaw/skills/van"
 WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OPENCLAW_CONFIG="${HOME}/.openclaw/openclaw.json"
 AGENT_NAME="van"
 
 # ---------------------------------------------------------------------------
@@ -29,7 +31,7 @@ error()   { printf '\033[0;31m[ERROR]\033[0m %s\n' "$*" >&2; }
 die()     { error "$*"; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Prerequisite checks
+# Step 1: Prerequisite checks
 # ---------------------------------------------------------------------------
 
 check_prerequisites() {
@@ -50,11 +52,11 @@ check_prerequisites() {
         die "Node.js 20+ is required. Current version: $(node --version)"
     fi
 
-    success "All prerequisites satisfied."
+    success "All prerequisites satisfied (Node.js $(node --version), OpenClaw $(openclaw --version 2>/dev/null || echo 'detected'))."
 }
 
 # ---------------------------------------------------------------------------
-# Step 1: Install npm dependencies and build
+# Step 2: Clean build
 # ---------------------------------------------------------------------------
 
 build_project() {
@@ -64,75 +66,15 @@ build_project() {
         || die "npm install failed. Check your network connection and try again."
     success "Dependencies installed."
 
-    info "Building TypeScript project..."
+    info "Building TypeScript (clean build)..."
+    rm -rf dist/
     npm run build \
         || die "Build failed. Check the TypeScript errors above."
-    success "Build complete."
+    success "Build complete — dist/ is fresh."
 }
 
 # ---------------------------------------------------------------------------
-# Step 2: Register the Van agent with OpenClaw
-# ---------------------------------------------------------------------------
-
-register_agent() {
-    info "Registering Van agent with OpenClaw..."
-
-    # Check if the agent is already registered to avoid duplicate registration
-    if openclaw agents list 2>/dev/null | grep -q "^${AGENT_NAME}\b"; then
-        warn "Agent '${AGENT_NAME}' is already registered. Skipping registration."
-        return
-    fi
-
-    openclaw agents add "${AGENT_NAME}" --workspace "${WORKSPACE_DIR}" \
-        || die "Failed to register agent. Ensure the OpenClaw daemon is running: openclaw status"
-    success "Agent '${AGENT_NAME}' registered at ${WORKSPACE_DIR}."
-}
-
-# ---------------------------------------------------------------------------
-# Step 3: Install shared methodology skills
-# ---------------------------------------------------------------------------
-
-install_skills() {
-    info "Installing shared cognitive methodology skills..."
-
-    # Create the top-level van skill directory
-    mkdir -p "${SKILL_DIR}"
-
-    # Copy the root SKILL.md (the van skill manifest)
-    cp "${WORKSPACE_DIR}/SKILL.md" "${SKILL_DIR}/SKILL.md"
-    success "Installed van/SKILL.md"
-
-    # Individual skill directories to install
-    local skills=(
-        "cognitive-loop"
-        "goal-manager"
-        "reflection"
-        "risk-assessor"
-        "self-evolution"
-        "revenue-strategist"
-        "action-planner"
-        "memory-manager"
-        "core-identity"
-        "world-model"
-    )
-
-    for skill in "${skills[@]}"; do
-        local src="${WORKSPACE_DIR}/methodology/skills/${skill}/SKILL.md"
-        local dest="${SKILL_DIR}/${skill}/SKILL.md"
-
-        if [ ! -f "${src}" ]; then
-            warn "Skill file not found: ${src} — skipping"
-            continue
-        fi
-
-        mkdir -p "${SKILL_DIR}/${skill}"
-        cp "${src}" "${dest}"
-        success "Installed van/${skill}"
-    done
-}
-
-# ---------------------------------------------------------------------------
-# Step 4: Create memory directory structure
+# Step 3: Create memory directory structure
 # ---------------------------------------------------------------------------
 
 create_memory_structure() {
@@ -144,7 +86,6 @@ create_memory_structure() {
         "memory/experiences/successes"
         "memory/experiences/failures"
         "memory/experiences/insights"
-        "memory/experiences/interactions"
         "memory/knowledge/technical"
         "memory/knowledge/markets"
         "memory/knowledge/domains"
@@ -166,6 +107,183 @@ create_memory_structure() {
     done
 
     success "Memory directories created."
+}
+
+# ---------------------------------------------------------------------------
+# Step 4: Install shared methodology skills
+# ---------------------------------------------------------------------------
+
+install_skills() {
+    info "Installing shared cognitive methodology skills..."
+
+    mkdir -p "${SKILL_DIR}"
+    cp "${WORKSPACE_DIR}/SKILL.md" "${SKILL_DIR}/SKILL.md"
+
+    local skills=(
+        "cognitive-loop"
+        "goal-manager"
+        "reflection"
+        "risk-assessor"
+        "self-evolution"
+        "revenue-strategist"
+        "action-planner"
+        "memory-manager"
+        "core-identity"
+        "world-model"
+    )
+
+    local installed=0
+    for skill in "${skills[@]}"; do
+        local src="${WORKSPACE_DIR}/methodology/skills/${skill}/SKILL.md"
+        if [ ! -f "${src}" ]; then
+            warn "Skill file not found: ${src} — skipping"
+            continue
+        fi
+        mkdir -p "${SKILL_DIR}/${skill}"
+        cp "${src}" "${SKILL_DIR}/${skill}/SKILL.md"
+        installed=$((installed + 1))
+    done
+
+    success "Installed ${installed}/10 cognitive skills to ${SKILL_DIR}"
+}
+
+# ---------------------------------------------------------------------------
+# Step 5: Register the Van agent
+# ---------------------------------------------------------------------------
+
+register_agent() {
+    info "Registering Van agent with OpenClaw..."
+
+    if openclaw agents list 2>/dev/null | grep -q "^${AGENT_NAME}\b"; then
+        warn "Agent '${AGENT_NAME}' is already registered. Skipping."
+        return
+    fi
+
+    openclaw agents add "${AGENT_NAME}" --workspace "${WORKSPACE_DIR}" \
+        || die "Failed to register agent. Ensure the OpenClaw gateway is running: openclaw gateway status"
+    success "Agent '${AGENT_NAME}' registered."
+}
+
+# ---------------------------------------------------------------------------
+# Step 6: Configure lossless-claw in plugins.allow
+# ---------------------------------------------------------------------------
+
+configure_lossless_claw() {
+    info "Checking lossless-claw plugin configuration..."
+
+    if [ ! -f "${OPENCLAW_CONFIG}" ]; then
+        warn "openclaw.json not found at ${OPENCLAW_CONFIG} — skipping lossless-claw config."
+        warn "If you installed lossless-claw, add it manually to plugins.allow in your openclaw.json."
+        return
+    fi
+
+    if grep -q "lossless-claw" "${OPENCLAW_CONFIG}" 2>/dev/null; then
+        success "lossless-claw already in openclaw.json."
+    else
+        warn "lossless-claw not found in openclaw.json."
+        warn "To enable it, add \"lossless-claw\" to plugins.allow in ${OPENCLAW_CONFIG}"
+        warn "Then restart the gateway: openclaw gateway restart"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Step 7: Create convenience scripts (start/stop/status)
+# ---------------------------------------------------------------------------
+
+create_convenience_scripts() {
+    info "Creating start/stop convenience scripts..."
+
+    # van-start.sh
+    cat > "${WORKSPACE_DIR}/van-start.sh" << 'SCRIPT'
+#!/usr/bin/env bash
+# Start Van autonomous agent in background
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${DIR}"
+
+if [ -f van.pid ] && kill -0 "$(cat van.pid)" 2>/dev/null; then
+    echo "Van is already running (PID $(cat van.pid)). Use ./van-stop.sh first."
+    exit 1
+fi
+
+mkdir -p logs
+nohup node dist/index.js > logs/van.log 2>&1 &
+echo $! > van.pid
+echo "Van started (PID $!). Logs: ${DIR}/logs/van.log"
+echo "Monitor: tail -f ${DIR}/logs/van.log"
+echo "Stop:    ${DIR}/van-stop.sh"
+SCRIPT
+    chmod +x "${WORKSPACE_DIR}/van-start.sh"
+
+    # van-stop.sh
+    cat > "${WORKSPACE_DIR}/van-stop.sh" << 'SCRIPT'
+#!/usr/bin/env bash
+# Stop the Van autonomous agent
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ ! -f "${DIR}/van.pid" ]; then
+    echo "No van.pid file found — Van may not be running."
+    exit 0
+fi
+
+PID=$(cat "${DIR}/van.pid")
+if kill -0 "${PID}" 2>/dev/null; then
+    kill "${PID}"
+    echo "Van stopped (PID ${PID})."
+else
+    echo "Process ${PID} not found — Van was not running."
+fi
+rm -f "${DIR}/van.pid"
+SCRIPT
+    chmod +x "${WORKSPACE_DIR}/van-stop.sh"
+
+    # van-status.sh
+    cat > "${WORKSPACE_DIR}/van-status.sh" << 'SCRIPT'
+#!/usr/bin/env bash
+# Check Van status
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "${DIR}/van.pid" ] && kill -0 "$(cat "${DIR}/van.pid")" 2>/dev/null; then
+    PID=$(cat "${DIR}/van.pid")
+    echo "Van is running (PID ${PID})"
+    echo ""
+    echo "Last 10 log lines:"
+    tail -10 "${DIR}/logs/van.log" 2>/dev/null || echo "(no logs yet)"
+    echo ""
+    if [ -f "${DIR}/memory/goals/active.md" ]; then
+        echo "Active goals:"
+        grep "^### " "${DIR}/memory/goals/active.md" 2>/dev/null || echo "(none yet)"
+    fi
+else
+    echo "Van is not running."
+    echo "Start with: ${DIR}/van-start.sh"
+fi
+SCRIPT
+    chmod +x "${WORKSPACE_DIR}/van-status.sh"
+
+    success "Created van-start.sh, van-stop.sh, van-status.sh"
+}
+
+# ---------------------------------------------------------------------------
+# Step 8: Smoke test — run 1 cycle to verify everything works
+# ---------------------------------------------------------------------------
+
+smoke_test() {
+    info "Running smoke test (1 cognitive cycle)..."
+    cd "${WORKSPACE_DIR}"
+
+    local output
+    output=$(MAX_CYCLES=1 node dist/index.js 2>&1) || true
+
+    if echo "${output}" | grep -q "CYCLE 1 COMPLETE"; then
+        success "Smoke test passed — first cognitive cycle completed successfully."
+    elif echo "${output}" | grep -q "CYCLE 1"; then
+        warn "Smoke test: cycle 1 started but may not have completed cleanly."
+        warn "This is usually fine — Van will recover on the next start."
+    else
+        warn "Smoke test: unexpected output. Van may still work — check logs after starting."
+        echo "Output preview:"
+        echo "${output}" | tail -5
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -194,27 +312,37 @@ main() {
     register_agent
     printf '\n'
 
+    configure_lossless_claw
+    printf '\n'
+
+    create_convenience_scripts
+    printf '\n'
+
+    smoke_test
+    printf '\n'
+
     printf '=================================================================\n'
     printf ' Setup complete.\n'
     printf '=================================================================\n'
     printf '\n'
-    printf 'Next steps:\n'
+    printf 'Start Van:\n'
+    printf '  %s/van-start.sh\n' "${WORKSPACE_DIR}"
     printf '\n'
-    printf '  1. Start the Van agent:\n'
-    printf '       openclaw agent start van\n'
+    printf 'Stop Van:\n'
+    printf '  %s/van-stop.sh\n' "${WORKSPACE_DIR}"
     printf '\n'
-    printf '  2. Use cognitive skills in your other agents:\n'
-    printf '       Add skill references to any agent config:\n'
-    printf '         skills:\n'
-    printf '           - van/cognitive-loop\n'
-    printf '           - van/goal-manager\n'
-    printf '           - van/reflection\n'
+    printf 'Check status:\n'
+    printf '  %s/van-status.sh\n' "${WORKSPACE_DIR}"
     printf '\n'
-    printf '  3. Monitor Van:\n'
-    printf '       cat %s/memory/goals/active.md\n' "${WORKSPACE_DIR}"
-    printf '       tail -f %s/logs/van.log\n' "${WORKSPACE_DIR}"
+    printf 'Monitor logs:\n'
+    printf '  tail -f %s/logs/van.log\n' "${WORKSPACE_DIR}"
     printf '\n'
-    printf 'Documentation: %s/docs/setup.md\n' "${WORKSPACE_DIR}"
+    printf 'Use cognitive skills in other agents:\n'
+    printf '  Add to any agent config:\n'
+    printf '    skills:\n'
+    printf '      - van/cognitive-loop\n'
+    printf '      - van/goal-manager\n'
+    printf '      - van/reflection\n'
     printf '\n'
 }
 

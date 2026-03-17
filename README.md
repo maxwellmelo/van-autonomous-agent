@@ -191,18 +191,33 @@ cd $env:USERPROFILE\.openclaw\agents-workspaces\van
 ```
 
 The setup script handles everything:
+- Clean build (deletes `dist/` first to avoid stale cache)
 - Installs npm dependencies and compiles TypeScript
-- Creates the memory directory structure
+- Creates the full memory directory structure
 - Copies the 10 cognitive skill manifests into `~/.openclaw/skills/van/`
 - Registers the Van agent via `openclaw agents add van`
+- Checks if lossless-claw is configured in `plugins.allow`
+- Creates convenience scripts (`van-start`, `van-stop`, `van-status`)
+- Runs a smoke test (1 cognitive cycle) to verify everything works
 
 ### Start Van
 
 ```bash
-openclaw agent start van
+# Linux/macOS
+./van-start.sh
+
+# Windows
+.\van-start.ps1
 ```
 
-Van begins its first cognitive cycle immediately. No API keys, no model config, no additional setup. Van uses whatever AI provider your OpenClaw instance is already connected to.
+Van starts in the background and begins its first cognitive cycle. No API keys, no model config, no additional setup. Van uses whatever AI provider your OpenClaw instance is connected to.
+
+Manage Van:
+```bash
+./van-status.sh    # Check if running + show goals
+./van-stop.sh      # Graceful stop
+tail -f logs/van.log  # Live log monitoring
+```
 
 ### Use the methodology in your other agents
 
