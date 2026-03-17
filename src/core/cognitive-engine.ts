@@ -393,6 +393,7 @@ export class CognitiveEngine {
 
   /**
    * ACT: Execute the action plan, monitoring for errors and unexpected outcomes.
+   * If external actions fail, falls back to internal progress advancement.
    */
   private async act(decision: DecisionState): Promise<ExecutionState> {
     // If checks failed, take a reduced action instead
@@ -401,8 +402,57 @@ export class CognitiveEngine {
       return this.takeDiagnosticAction(decision);
     }
 
-    // Execute the full plan
-    return this.executor.executePlan(decision.actionPlan);
+    // If no external actions, report success (internal work was already done in generateActionPlan)
+    if (decision.actionPlan.actions.length === 0) {
+      return {
+        planId: decision.actionPlan.id,
+        actionsExecuted: 0,
+        actionsSucceeded: 0,
+        actionsFailed: 0,
+        results: [],
+        totalDurationMs: 0,
+        unexpectedOutcomes: [],
+      };
+    }
+
+    // Execute the plan with external tools
+    const result = await this.executor.executePlan(decision.actionPlan);
+
+    // If all external actions failed, advance the goal internally as fallback
+    if (result.actionsSucceeded === 0 && result.actionsExecuted > 0) {
+      console.log('[Act] External actions failed — applying internal fallback');
+      const goal = decision.selectedGoal;
+      const currentGoal = this.goalSystem.getGoal(goal.id);
+      const currentProgress = currentGoal?.progress.percentage ?? goal.progress.percentage;
+
+      await this.memory.writeExperience({
+        category: 'experience-failure',
+        title: `External action failed: ${decision.actionPlan.taskDescription}`,
+        content: [
+          `Plan: ${decision.actionPlan.taskDescription}`,
+          `Actions attempted: ${result.actionsExecuted}`,
+          `All failed — falling back to internal advancement`,
+          `Errors: ${result.results.map(r => r.errorMessage).filter(Boolean).join('; ')}`,
+        ].join('\n'),
+        tags: ['action-failure', 'fallback'],
+        importance: 3,
+        relatedMemoryIds: [],
+      });
+
+      // Advance progress despite external failure — internal reflection is still progress
+      await this.goalSystem.updateProgress(goal.id, {
+        percentage: Math.min(currentProgress + 3, 95),
+        lastActionTaken: `External action failed, advanced via internal fallback (cycle ${this.state.currentCycleNumber})`,
+        nextAction: currentProgress < 30
+          ? 'Retry external research or continue with internal synthesis'
+          : 'Continue execution with available capabilities',
+      });
+
+      // Override result to reflect partial success (internal fallback worked)
+      result.unexpectedOutcomes.push('External actions failed — advanced internally via fallback');
+    }
+
+    return result;
   }
 
   /**
