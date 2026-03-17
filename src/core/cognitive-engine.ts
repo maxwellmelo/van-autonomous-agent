@@ -234,7 +234,7 @@ export class CognitiveEngine {
       // PHASE 2: ORIENT
       cycle.phase = 'orient';
       cycle.orientation = await this.orient(cycle.observation);
-      console.log(`[Orient] Priority: ${cycle.orientation.selectedPriorityGoal.title}`);
+      console.log(`[Orient] Priority: ${cycle.orientation.selectedPriorityGoal.title} (${cycle.orientation.selectedPriorityGoal.progress.percentage}%)`);
 
       // PHASE 3: DECIDE
       cycle.phase = 'decide';
@@ -244,7 +244,10 @@ export class CognitiveEngine {
       // PHASE 4: ACT
       cycle.phase = 'act';
       cycle.execution = await this.act(cycle.decision);
-      console.log(`[Act] Executed ${cycle.execution.actionsExecuted} actions, ${cycle.execution.actionsSucceeded} succeeded`);
+      // Show real progress after act phase (internal work happens in generateActionPlan)
+      const goalAfterAct = this.goalSystem.getGoal(cycle.decision.selectedGoal.id);
+      const progressNow = goalAfterAct?.progress.percentage ?? 0;
+      console.log(`[Act] Executed ${cycle.execution.actionsExecuted} external actions, ${cycle.execution.actionsSucceeded} succeeded | Goal progress: ${progressNow}%`);
 
       // PHASE 5: REFLECT
       cycle.phase = 'reflect';
