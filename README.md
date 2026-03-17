@@ -20,6 +20,36 @@ Van is designed for the OpenClaw community as a reference implementation of what
 
 ---
 
+## Two Ways to Use This Project
+
+### Option A: Install the Methodology Only
+
+For users who want to apply Van's cognitive framework to their own existing agent — without the TypeScript runtime:
+
+```bash
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent --path methodology
+```
+
+This installs only the `methodology/` directory: ten structured system prompts and their documentation. You get the OODA+ cognitive loop, the goal hierarchy, the revenue evaluation framework, the self-evolution engine, and all supporting cognitive prompts — ready to load into any OpenClaw agent or LLM-based autonomous system.
+
+No TypeScript. No Node.js. No runtime dependencies. Just the prompts and the framework.
+
+See `methodology/README.md` for integration instructions and prompt customization guidance.
+
+### Option B: Install the Full Van Agent
+
+For users who want a complete, ready-to-run autonomous agent:
+
+```bash
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent
+```
+
+This installs the full Van implementation: the TypeScript runtime, all nine core modules (`CognitiveEngine`, `GoalSystem`, `MemorySystem`, `ActionExecutor`, `ReflectionEngine`, `EvolutionEngine`, `RevenueEngine`, `WorldModel`, `PersonalityEngine`), the complete prompt system, and the memory directory structure.
+
+Van starts running on your OpenClaw instance immediately, using whatever AI provider you have connected. No separate API key configuration is needed.
+
+---
+
 ## Key Features
 
 - **OODA+ Cognitive Loop** — A six-phase reasoning cycle (Observe, Orient, Decide, Act, Reflect, Evolve) that runs continuously and adapts based on outcomes
@@ -132,31 +162,45 @@ Van/
 
 ## Quick Start
 
-Van is an **OpenClaw plugin**. Your OpenClaw instance already has the AI provider configured — Van uses that connection directly. No API keys or model configuration needed.
-
 ### Prerequisites
 
 - **OpenClaw** installed and running with an AI provider already connected — [OpenClaw installation guide](https://openclaw.dev/docs/install)
 
-### Install Van
+---
+
+### Path A: Install the Methodology Only
+
+If you want the cognitive framework for your own agent, not the full Van runtime:
+
+```bash
+openclaw install https://github.com/maxwellmelo/van-autonomous-agent --path methodology
+```
+
+OpenClaw installs the `methodology/` directory into your agent's skill path. Load the prompt files as system context in whatever order suits your agent. See `methodology/README.md` for integration guidance, prompt customization instructions, and recommended loading order.
+
+---
+
+### Path B: Install and Run the Full Van Agent
+
+Van is an **OpenClaw plugin**. Your OpenClaw instance already has the AI provider configured — Van uses that connection directly. No API keys or model configuration needed.
+
+**Install:**
 
 ```bash
 openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-That's it. OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill.
+OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill.
 
-### Start Van
+**Start:**
 
 ```bash
 openclaw agent start van
 ```
 
-Van will begin its first cognitive cycle immediately, using whatever AI provider your OpenClaw instance is connected to.
+Van begins its first cognitive cycle immediately, using whatever AI provider your OpenClaw instance is connected to.
 
-### Development Mode
-
-If you want to develop or modify Van locally:
+**Development mode** (for local modification):
 
 ```bash
 git clone https://github.com/maxwellmelo/van-autonomous-agent.git
