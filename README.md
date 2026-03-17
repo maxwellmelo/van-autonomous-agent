@@ -1,6 +1,6 @@
 # Van
 
-**An autonomous AI agent with a cognitive loop, persistent memory, self-evolution, and revenue generation capabilities — built for the OpenClaw platform.**
+**An autonomous AI agent and cognitive framework for OpenClaw. One install gives you Van — a self-evolving agent with revenue generation — and upgrades every other agent in your instance with the same cognitive methodology.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -12,69 +12,26 @@
 
 ## What is Van?
 
-Van is a fully autonomous AI agent that operates a continuous cognitive loop without human direction. It reads its own memory, assesses its goals, plans and executes actions through OpenClaw's tool layer, reflects on outcomes, and evolves its own strategies — cycle after cycle.
+Van is an OpenClaw plugin that does two things with a single install:
 
-Van is not a chatbot, a script, or a simple automation. It has a defined personality, a persistent goal hierarchy, a file-based memory system, and a structured approach to generating revenue through legitimate value creation. Every decision Van makes passes through ethical, strategic, and execution checks before any action is taken.
+1. **Runs an autonomous agent** — Van operates a continuous cognitive loop (OODA+), pursuing its own goals, generating revenue through legitimate value creation, and evolving its capabilities over time. It has a personality, a persistent memory, a goal hierarchy, and hard ethical limits enforced at the code level.
 
-Van is designed for the OpenClaw community as a reference implementation of what a production-grade autonomous agent looks like when built with modularity, safety, and long-term sustainability as first-class concerns.
+2. **Upgrades all your agents** — Van's cognitive methodology (ten structured system prompts covering reasoning, planning, reflection, risk assessment, and self-improvement) is automatically available to every agent in your OpenClaw instance — current and future. Any agent can load the OODA+ framework, the goal management system, or the revenue strategy engine as shared cognitive skills.
 
----
+One install. The Van agent runs autonomously. Every other agent gets smarter.
 
-## Two Ways to Use This Project
+```mermaid
+graph LR
+    INSTALL["openclaw install van"] --> VAN["Van Agent<br/><i>Autonomous OODA+ loop</i>"]
+    INSTALL --> METHOD["Shared Methodology<br/><i>10 cognitive prompts</i>"]
+    METHOD --> A1["Your Agent A"]
+    METHOD --> A2["Your Agent B"]
+    METHOD --> A3["Future Agents"]
 
-### Option A: Install the Methodology Only
-
-For users who want to apply Van's cognitive framework to their own existing agent — without the TypeScript runtime:
-
-```bash
-openclaw install https://github.com/maxwellmelo/van-autonomous-agent --path methodology
+    style INSTALL fill:#7c3aed,color:#fff,stroke:#5b21b6
+    style VAN fill:#ea580c,color:#fff,stroke:#c2410c
+    style METHOD fill:#2563eb,color:#fff,stroke:#1d4ed8
 ```
-
-This installs only the `methodology/` directory: ten structured system prompts and their documentation. You get the OODA+ cognitive loop, the goal hierarchy, the revenue evaluation framework, the self-evolution engine, and all supporting cognitive prompts — ready to load into any OpenClaw agent or LLM-based autonomous system.
-
-No TypeScript. No Node.js. No runtime dependencies. Just the prompts and the framework.
-
-See `methodology/README.md` for integration instructions and prompt customization guidance.
-
-### Option B: Install the Full Van Agent
-
-For users who want a complete, ready-to-run autonomous agent:
-
-```bash
-openclaw install https://github.com/maxwellmelo/van-autonomous-agent
-```
-
-This installs the full Van implementation: the TypeScript runtime, all nine core modules (`CognitiveEngine`, `GoalSystem`, `MemorySystem`, `ActionExecutor`, `ReflectionEngine`, `EvolutionEngine`, `RevenueEngine`, `WorldModel`, `PersonalityEngine`), the complete prompt system, and the memory directory structure.
-
-Van starts running on your OpenClaw instance immediately, using whatever AI provider you have connected. No separate API key configuration is needed.
-
-**Recommended: Enable Lossless Memory**
-
-Van's cognitive loop generates a continuous stream of reflections, goals, experiences, and strategy decisions. To prevent context loss across long-running sessions, we strongly recommend installing [lossless-claw](https://github.com/martian-engineering/lossless-claw) — a plugin that replaces OpenClaw's default sliding-window truncation with DAG-based lossless context management:
-
-```bash
-openclaw plugins install @martian-engineering/lossless-claw
-```
-
-With lossless-claw enabled, Van never forgets. Every reflection, every lesson learned, every strategic decision is preserved in a SQLite database with hierarchical summaries. Van can recall details from hundreds of cycles ago using built-in retrieval tools (`lcm_grep`, `lcm_expand`).
-
-### Performance Comparison
-
-| Aspect | Option A (Methodology) | Option B (Full Agent) |
-|--------|----------------------|----------------------|
-| Latency per cycle | Lower — LLM called directly | Higher — TypeScript processing + LLM |
-| Memory usage | Only OpenClaw | Node.js runtime + OpenClaw |
-| Tokens per cycle | You control what loads | All prompts loaded per cycle |
-| I/O overhead | Minimal | Reads/writes Markdown each cycle |
-| Memory retention | Depends on your setup | Lossless with lossless-claw |
-| Flexibility | Total — adapt as you wish | Fixed CognitiveEngine structure |
-| Setup effort | Requires integration work | Ready to run immediately |
-| Self-evolution | Manual — you implement | Automatic — built-in EvolutionEngine |
-| Revenue tracking | Manual — you implement | Automatic — built-in RevenueEngine |
-
-**Choose Option A** if you already have an agent and want to upgrade its cognitive framework. It is lighter and gives you full control.
-
-**Choose Option B** if you want a complete autonomous agent out of the box, with persistent memory, self-evolution, and revenue tracking working from the first cycle.
 
 ---
 
@@ -89,6 +46,8 @@ With lossless-claw enabled, Van never forgets. Every reflection, every lesson le
 - **Hard Ethical Limits at the Code Level** — Key safety constraints enforced in the execution path, not only in prompts
 - **Model-Agnostic** — Runs on whatever AI provider your OpenClaw instance is connected to — no separate API key configuration needed
 - **Comprehensive Prompt System** — Ten specialized system prompts covering every cognitive function, from identity to revenue strategy to risk assessment
+- **Lossless Memory via lossless-claw** — Integrates with [lossless-claw](https://github.com/martian-engineering/lossless-claw) for DAG-based context management — Van never forgets a reflection, lesson, or strategic decision, even after hundreds of cycles
+- **Shared Cognitive Skills** — The methodology prompts are registered as shared OpenClaw skills, automatically available to every agent in your instance
 - **Structured Logging and Audit Trail** — All tool calls are recorded in a dedicated audit log; operational and daemon logs are kept separately
 
 ---
@@ -180,6 +139,10 @@ Van/
 +-- docs/
 |   +-- architecture.md              # Full architecture documentation
 |   +-- setup.md                     # Detailed setup and configuration guide
++-- methodology/                     # Standalone cognitive framework (shared with all agents)
+|   +-- README.md                    # Integration guide and prompt reference
+|   +-- MANIFEST.md                  # Prompt inventory and loading order
+|   +-- prompts/                     # All 10 cognitive prompts (self-contained copies)
 +-- openclaw.config.yaml             # OpenClaw daemon configuration
 +-- .env.example                     # Runtime environment variable reference
 +-- package.json
@@ -192,44 +155,46 @@ Van/
 
 ### Prerequisites
 
-- **OpenClaw** installed and running with an AI provider already connected — [OpenClaw installation guide](https://openclaw.dev/docs/install)
+- **OpenClaw** installed and running with an AI provider connected — [OpenClaw installation guide](https://openclaw.dev/docs/install)
 
----
-
-### Path A: Install the Methodology Only
-
-If you want the cognitive framework for your own agent, not the full Van runtime:
-
-```bash
-openclaw install https://github.com/maxwellmelo/van-autonomous-agent --path methodology
-```
-
-OpenClaw installs the `methodology/` directory into your agent's skill path. Load the prompt files as system context in whatever order suits your agent. See `methodology/README.md` for integration guidance, prompt customization instructions, and recommended loading order.
-
----
-
-### Path B: Install and Run the Full Van Agent
-
-Van is an **OpenClaw plugin**. Your OpenClaw instance already has the AI provider configured — Van uses that connection directly. No API keys or model configuration needed.
-
-**Install Van + lossless memory:**
+### Install
 
 ```bash
 openclaw plugins install @martian-engineering/lossless-claw
 openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-OpenClaw handles dependency installation, builds the project, and registers Van as an active agent skill. Lossless-claw ensures Van never loses context across long-running sessions.
+That's it. Two commands. OpenClaw handles everything:
+- **lossless-claw** replaces the default sliding-window context with [DAG-based lossless memory](https://github.com/martian-engineering/lossless-claw) — Van (and all your agents) never lose context, even across hundreds of cycles
+- **van** installs the autonomous agent, the cognitive methodology, and registers the shared prompts for all agents in your instance
 
-**Start:**
+### Start Van
 
 ```bash
 openclaw agent start van
 ```
 
-Van begins its first cognitive cycle immediately, using whatever AI provider your OpenClaw instance is connected to.
+Van begins its first cognitive cycle immediately. No API keys, no model config, no additional setup.
 
-**Development mode** (for local modification):
+### Use the methodology in your other agents
+
+The ten cognitive prompts are now available as shared skills. Any agent in your OpenClaw instance can load them:
+
+```yaml
+# In any agent's config
+skills:
+  - van/cognitive-loop
+  - van/goal-manager
+  - van/reflection
+  - van/risk-assessor
+  # ... or any combination of the 10 prompts
+```
+
+See `methodology/README.md` for the full prompt reference and recommended loading order.
+
+### Development mode
+
+For local modification and testing:
 
 ```bash
 git clone https://github.com/maxwellmelo/van-autonomous-agent.git
@@ -238,14 +203,9 @@ npm install
 npm run dev
 ```
 
-For controlled test runs:
-
 ```bash
-# Single cycle
-npm run cycle:once
-
-# Five cycles
-npm run cycle:five
+npm run cycle:once    # Single cognitive cycle
+npm run cycle:five    # Five cycles
 ```
 
 ---
