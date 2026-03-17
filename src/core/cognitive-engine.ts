@@ -630,7 +630,6 @@ export class CognitiveEngine {
 
     // Phase 3 (30%+): Execution — specific actions toward goal completion
     else {
-      // At this stage, try external actions if available, otherwise keep advancing internally
       await this.memory.writeExperience({
         category: 'experience-insight',
         title: `Progress update: ${goal.title} at ${progress}%`,
@@ -640,11 +639,21 @@ export class CognitiveEngine {
         relatedMemoryIds: [],
       });
 
-      await this.goalSystem.updateProgress(goal.id, {
-        percentage: Math.min(progress + 5, 95),
-        lastActionTaken: `Execution cycle ${this.state.currentCycleNumber}`,
-        nextAction: progress >= 90 ? 'Final review and goal completion' : 'Continue execution toward success criteria',
-      });
+      const newProgress = Math.min(progress + 5, 100);
+
+      if (newProgress >= 100) {
+        // Goal complete — mark it done
+        await this.goalSystem.completeGoal(goal.id,
+          `Completed via autonomous cognitive loop at cycle ${this.state.currentCycleNumber}`
+        );
+        console.log(`[Plan] Goal completed: ${goal.title}`);
+      } else {
+        await this.goalSystem.updateProgress(goal.id, {
+          percentage: newProgress,
+          lastActionTaken: `Execution cycle ${this.state.currentCycleNumber}`,
+          nextAction: newProgress >= 90 ? 'Final review and goal completion' : 'Continue execution toward success criteria',
+        });
+      }
     }
 
     return {
