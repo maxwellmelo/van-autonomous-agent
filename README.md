@@ -39,40 +39,40 @@ Van is designed for the OpenClaw community as a reference implementation of what
 
 Van's runtime is organized around a central `CognitiveEngine` that orchestrates nine specialized modules. All persistent state flows through the `MemorySystem`. All external actions flow through the `ActionExecutor` and its `OpenClawAdapter`, which communicates with the OpenClaw daemon.
 
-```
-+--------------------------------------------------------------------+
-|                         Van Agent Runtime                          |
-|                                                                    |
-|  +-------------------------------------------------------------+  |
-|  |                     CognitiveEngine                         |  |
-|  |   OBSERVE -> ORIENT -> DECIDE -> ACT -> REFLECT -> EVOLVE   |  |
-|  +----+----------+----------+--------+----------+-------------+  |
-|       |          |          |        |          |                  |
-|  +----v---+ +----v---+ +---v---+ +--v----+ +--v----+             |
-|  | Goal   | |Person- | |Action | |Reflec-| |Evolu- |             |
-|  | System | |ality   | |Planner| |tion   | |tion   |             |
-|  |        | |Engine  | |       | |Engine | |Engine |             |
-|  +----+---+ +--------+ +---+---+ +-------+ +-------+             |
-|       |                    |                                       |
-|  +----v--------------------v-------------------------------------+ |
-|  |                      MemorySystem                             | |
-|  |               (Persistent Markdown Files)                     | |
-|  +---------------------------------------------------------------+ |
-|                                                                    |
-|  +--------------------------------------------------------------+  |
-|  |                     ActionExecutor                           |  |
-|  |                  +-----------------+                         |  |
-|  |                  | OpenClawAdapter |                         |  |
-|  |                  +--------+--------+                         |  |
-|  +---------------------------+----------------------------------+  |
-|                              |                                     |
-+------------------------------+-------------------------------------+
-                               |
-               +---------------v----------------+
-               |        OpenClaw Daemon         |
-               |                                |
-               |  Shell | Browser | File | HTTP |
-               +--------------------------------+
+```mermaid
+graph TD
+    subgraph Van Agent Runtime
+        CE["CognitiveEngine<br/><i>OBSERVE → ORIENT → DECIDE → ACT → REFLECT → EVOLVE</i>"]
+
+        CE --> GS["Goal System"]
+        CE --> PE["Personality Engine"]
+        CE --> AP["Action Planner"]
+        CE --> RE["Reflection Engine"]
+        CE --> EE["Evolution Engine"]
+
+        GS --> MS["MemorySystem<br/><i>Persistent Markdown Files</i>"]
+        PE --> MS
+        AP --> MS
+        RE --> MS
+        EE --> MS
+
+        AP --> AE["ActionExecutor"]
+        AE --> OCA["OpenClawAdapter"]
+    end
+
+    OCA -->|HTTP :18789| OCD["OpenClaw Daemon"]
+
+    subgraph OpenClaw Daemon
+        OCD --> Shell
+        OCD --> Browser
+        OCD --> FileSystem
+        OCD --> HTTP
+    end
+
+    style CE fill:#7c3aed,color:#fff,stroke:#5b21b6
+    style MS fill:#2563eb,color:#fff,stroke:#1d4ed8
+    style AE fill:#059669,color:#fff,stroke:#047857
+    style OCD fill:#ea580c,color:#fff,stroke:#c2410c
 ```
 
 ### Phase Responsibilities
@@ -211,6 +211,23 @@ npm run cycle:five
 
 Van's cognitive loop is adapted from John Boyd's OODA loop, extended with two additional phases suited to a learning agent. Every cycle produces at minimum one of: a completed task, a learned lesson, a discovered opportunity, or a disproven hypothesis.
 
+```mermaid
+graph LR
+    O["OBSERVE<br/><i>Read state</i>"] --> OR["ORIENT<br/><i>Prioritize</i>"]
+    OR --> D["DECIDE<br/><i>Plan</i>"]
+    D --> A["ACT<br/><i>Execute</i>"]
+    A --> R["REFLECT<br/><i>Learn</i>"]
+    R --> E["EVOLVE<br/><i>Improve</i>"]
+    E -.->|next cycle| O
+
+    style O fill:#3b82f6,color:#fff,stroke:#2563eb
+    style OR fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    style D fill:#ec4899,color:#fff,stroke:#db2777
+    style A fill:#f97316,color:#fff,stroke:#ea580c
+    style R fill:#14b8a6,color:#fff,stroke:#0d9488
+    style E fill:#22c55e,color:#fff,stroke:#16a34a
+```
+
 ### Phase 1: OBSERVE — Situation Assessment
 
 Van reads its current state from memory without assuming anything. It answers: What are my active goals? What progress has been made? What tools and resources are available? What opportunities or signals have emerged? What is my current motivational state?
@@ -232,7 +249,21 @@ A primary goal is selected and decomposed into a concrete action plan with:
 - Step-by-step actions with expected outputs and validation criteria
 - Explicit dependency ordering between steps
 - Contingency paths for likely failure modes
-- A mandatory three-gate check: **Ethical** (binary pass/fail), **Strategic** (weighted score > 6/10), and **Execution** (binary pass/fail)
+- A mandatory three-gate check before execution:
+
+```mermaid
+graph LR
+    P["Action Plan"] --> E{"Ethical Gate<br/><i>pass/fail</i>"}
+    E -->|pass| S{"Strategic Gate<br/><i>score > 6/10</i>"}
+    E -->|fail| X["REFUSED"]
+    S -->|pass| EX{"Execution Gate<br/><i>pass/fail</i>"}
+    S -->|fail| X
+    EX -->|pass| GO["EXECUTE"]
+    EX -->|fail| X
+
+    style X fill:#dc2626,color:#fff,stroke:#b91c1c
+    style GO fill:#16a34a,color:#fff,stroke:#15803d
+```
 
 Any plan that fails an ethical gate is refused unconditionally.
 
@@ -352,7 +383,27 @@ Every opportunity is scored on four dimensions before pursuit:
 | Sustainability | 25 | Consistency, defensibility, skill compounding |
 | Alignment | 20 | Ethical fit, strategic fit, interest level |
 
-Minimum score to pursue: **55/100**. Strong opportunity: **70+**. Exceptional: **85+**.
+```mermaid
+graph TD
+    OP["New Opportunity"] --> EL{"Ethical + Legal?"}
+    EL -->|no| PASS["PASS — Rejected"]
+    EL -->|yes| SCORE["Score on 4 dimensions"]
+    SCORE --> F["Feasibility /25"]
+    SCORE --> R["Revenue Potential /30"]
+    SCORE --> S["Sustainability /25"]
+    SCORE --> A["Alignment /20"]
+    F & R & S & A --> TOTAL{"Total Score"}
+    TOTAL -->|"85+"| EXC["Exceptional — Pursue aggressively"]
+    TOTAL -->|"70-84"| STRONG["Strong — Pursue"]
+    TOTAL -->|"55-69"| INV["Investigate further"]
+    TOTAL -->|"< 55"| PASS2["Pass"]
+
+    style PASS fill:#dc2626,color:#fff
+    style PASS2 fill:#dc2626,color:#fff
+    style EXC fill:#16a34a,color:#fff
+    style STRONG fill:#22c55e,color:#fff
+    style INV fill:#f59e0b,color:#fff
+```
 
 ---
 

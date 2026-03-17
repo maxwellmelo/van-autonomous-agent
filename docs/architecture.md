@@ -10,40 +10,40 @@ This document describes the system architecture, component responsibilities, and
 
 ## System Architecture
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                        Van Agent Runtime                           │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                   CognitiveEngine                           │  │
-│  │   OBSERVE → ORIENT → DECIDE → ACT → REFLECT → EVOLVE       │  │
-│  └────┬──────────┬──────────┬────────┬──────────┬─────────────┘  │
-│       │          │          │        │          │                  │
-│  ┌────▼───┐ ┌────▼───┐ ┌───▼───┐ ┌──▼────┐ ┌──▼────┐           │
-│  │ Goal   │ │Person- │ │Action │ │Reflec-│ │Evolu- │           │
-│  │ System │ │ality   │ │Planner│ │tion   │ │tion   │           │
-│  │        │ │Engine  │ │       │ │Engine │ │Engine │           │
-│  └────┬───┘ └────────┘ └───┬───┘ └───────┘ └───────┘           │
-│       │                    │                                      │
-│  ┌────▼────────────────────▼──────────────────────────────────┐  │
-│  │                    MemorySystem                             │  │
-│  │              (Persistent Markdown Files)                    │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │                   ActionExecutor                             │ │
-│  │                ┌──────────────────┐                         │ │
-│  │                │ OpenClawAdapter   │                         │ │
-│  │                └────────┬─────────┘                         │ │
-│  └─────────────────────────┼─────────────────────────────────┘ │
-│                             │                                    │
-└─────────────────────────────┼────────────────────────────────────┘
-                              │
-              ┌───────────────▼────────────────┐
-              │        OpenClaw Daemon          │
-              │                                │
-              │  Shell │ Browser │ File │ HTTP  │
-              └────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Van Agent Runtime
+        CE["CognitiveEngine<br/><i>OBSERVE → ORIENT → DECIDE → ACT → REFLECT → EVOLVE</i>"]
+
+        CE --> GS["Goal System"]
+        CE --> PE["Personality Engine"]
+        CE --> AP["Action Planner"]
+        CE --> RE["Reflection Engine"]
+        CE --> EE["Evolution Engine"]
+
+        GS --> MS["MemorySystem<br/><i>Persistent Markdown Files</i>"]
+        PE --> MS
+        AP --> MS
+        RE --> MS
+        EE --> MS
+
+        AP --> AE["ActionExecutor"]
+        AE --> OCA["OpenClawAdapter"]
+    end
+
+    OCA -->|HTTP :18789| OCD["OpenClaw Daemon"]
+
+    subgraph OpenClaw Daemon
+        OCD --> Shell
+        OCD --> Browser
+        OCD --> FileSystem
+        OCD --> HTTP
+    end
+
+    style CE fill:#7c3aed,color:#fff,stroke:#5b21b6
+    style MS fill:#2563eb,color:#fff,stroke:#1d4ed8
+    style AE fill:#059669,color:#fff,stroke:#047857
+    style OCD fill:#ea580c,color:#fff,stroke:#c2410c
 ```
 
 ---
@@ -151,33 +151,44 @@ Maintains Van's understanding of the external environment: markets, tools, oppor
 
 ### Cognitive Cycle Flow
 
-```
-1. OBSERVE
-   MemorySystem.readActiveGoals() → GoalSystem
-   MemorySystem.readRecentExperiences() → context
-   WorldModel.generateWorldModelSummary() → environment
+```mermaid
+sequenceDiagram
+    participant CE as CognitiveEngine
+    participant MS as MemorySystem
+    participant GS as GoalSystem
+    participant PE as PersonalityEngine
+    participant EE as EvolutionEngine
+    participant AE as ActionExecutor
+    participant OC as OpenClaw Daemon
+    participant RE as ReflectionEngine
 
-2. ORIENT
-   GoalSystem.reprioritizeAll() → sorted goals
-   PersonalityEngine.getBehavioralParameters() → style
-   EvolutionEngine.getTopCapabilityGaps() → knowledge gaps
+    Note over CE: Phase 1 — OBSERVE
+    CE->>MS: readActiveGoals()
+    CE->>MS: readRecentExperiences()
+    CE->>MS: generateWorldModelSummary()
 
-3. DECIDE
-   CognitiveEngine.generateActionPlan(goal) → ActionPlan
-   Ethics/Strategic/Execution checks → go/no-go
+    Note over CE: Phase 2 — ORIENT
+    CE->>GS: reprioritizeAll()
+    CE->>PE: getBehavioralParameters()
+    CE->>EE: getTopCapabilityGaps()
 
-4. ACT
-   ActionExecutor.executePlan(plan) → ExecutionState
-   OpenClawAdapter.executeToolCall(call) → ToolCallResult
+    Note over CE: Phase 3 — DECIDE
+    CE->>CE: generateActionPlan(goal)
+    CE->>CE: Ethics / Strategic / Execution checks
 
-5. REFLECT
-   ReflectionEngine.reflectOnCycle(cycle) → ReflectionRecord
-   MemorySystem.writeReflection(record) → persisted
-   PersonalityEngine.endCycle(activity, success) → state update
+    Note over CE: Phase 4 — ACT
+    CE->>AE: executePlan(plan)
+    AE->>OC: executeToolCall(call)
+    OC-->>AE: ToolCallResult
 
-6. EVOLVE
-   EvolutionEngine.processReflection(reflection) → capability updates
-   GoalSystem.completeGoal(id) for completed micro-tasks
+    Note over CE: Phase 5 — REFLECT
+    CE->>RE: reflectOnCycle(cycle)
+    RE->>MS: writeReflection(record)
+    CE->>PE: endCycle(activity, success)
+
+    Note over CE: Phase 6 — EVOLVE
+    CE->>EE: processReflection(reflection)
+    CE->>GS: completeGoal(id)
 ```
 
 ---
