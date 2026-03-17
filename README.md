@@ -22,7 +22,7 @@ One install. The Van agent runs autonomously. Every other agent gets smarter.
 
 ```mermaid
 graph LR
-    INSTALL["openclaw install van"] --> VAN["Van Agent<br/><i>Autonomous OODA+ loop</i>"]
+    INSTALL["./setup.sh"] --> VAN["Van Agent<br/><i>Autonomous OODA+ loop</i>"]
     INSTALL --> METHOD["Shared Methodology<br/><i>10 cognitive prompts</i>"]
     METHOD --> A1["Your Agent A"]
     METHOD --> A2["Your Agent B"]
@@ -159,14 +159,42 @@ Van/
 
 ### Install
 
+**Step 1: Install the lossless-claw plugin**
+
 ```bash
 openclaw plugins install @martian-engineering/lossless-claw
-openclaw install https://github.com/maxwellmelo/van-autonomous-agent
 ```
 
-That's it. Two commands. OpenClaw handles everything:
-- **lossless-claw** replaces the default sliding-window context with [DAG-based lossless memory](https://github.com/martian-engineering/lossless-claw) — Van (and all your agents) never lose context, even across hundreds of cycles
-- **van** installs the autonomous agent, the cognitive methodology, and registers the shared prompts for all agents in your instance
+This replaces the default sliding-window context with [DAG-based lossless memory](https://github.com/martian-engineering/lossless-claw) — Van (and all your agents) never lose context, even across hundreds of cycles.
+
+**Step 2: Clone Van into your OpenClaw agents workspace**
+
+```bash
+git clone https://github.com/maxwellmelo/van-autonomous-agent.git ~/.openclaw/agents-workspaces/van
+```
+
+**Step 3: Run the setup script**
+
+On Linux/macOS:
+
+```bash
+cd ~/.openclaw/agents-workspaces/van
+chmod +x setup.sh
+./setup.sh
+```
+
+On Windows (PowerShell):
+
+```powershell
+cd $env:USERPROFILE\.openclaw\agents-workspaces\van
+.\setup.ps1
+```
+
+The setup script handles everything:
+- Installs npm dependencies and compiles TypeScript
+- Creates the memory directory structure
+- Copies the 10 cognitive skill manifests into `~/.openclaw/skills/van/`
+- Registers the Van agent via `openclaw agents add van`
 
 ### Start Van
 
@@ -174,7 +202,7 @@ That's it. Two commands. OpenClaw handles everything:
 openclaw agent start van
 ```
 
-Van begins its first cognitive cycle immediately. No API keys, no model config, no additional setup.
+Van begins its first cognitive cycle immediately. No API keys, no model config, no additional setup. Van uses whatever AI provider your OpenClaw instance is already connected to.
 
 ### Use the methodology in your other agents
 
@@ -197,8 +225,6 @@ See `methodology/README.md` for the full prompt reference and recommended loadin
 For local modification and testing:
 
 ```bash
-git clone https://github.com/maxwellmelo/van-autonomous-agent.git
-cd van-autonomous-agent
 npm install
 npm run dev
 ```
